@@ -15,6 +15,19 @@
 #pragma comment( lib, "urlmon" )
 
 //#define OPEN_PAGES_IN_BROWSER
+//#define SKIP_REPEATING_DOMAINS
+
+#define LIMIT_OF_EMPTY_SEARCHES_LOCAL 3
+#define LIMIT_OF_EMPTY_SEARCHES_GLOBAL 3
+
+constexpr auto stored_url_contents = "page.html";
+constexpr auto stored_urls = "usedpages.txt";
+constexpr auto choose_url = "Choose an initial starting url : ";
+constexpr auto start_url_message = "Starting url: ";
+constexpr auto empty_searches_message = "\a searches complete without changes.";
+constexpr auto choose_new_url = "Exhausted all possibilities for initial starting url, choose another starting url: ";
+constexpr auto new_url_message = "Using new url: ";
+
 
 #ifdef OPEN_PAGES_IN_BROWSER
 constexpr auto BROWSER = L"firefox";
@@ -64,29 +77,58 @@ size_t FindString(const std::string aStr, const char* aFileName)
 	return 1;
 	}
 
+std::string SubString(const size_t aStart, const size_t aEnd, const char aChar, std::string aStr)
+	{
+
+	if(aStart == aEnd)
+		throw 1;
+
+	bool start = false, end = false;
+	size_t cur_pos = 0, occur = 0, start_pos = 0, end_pos = 0;
+	for(char c : aStr)
+		{
+		if(c == aChar)
+			++occur;
+		if(!start && occur == aStart)
+			{
+			start = true;
+			start_pos = cur_pos;
+			}
+		if(!end && occur == aEnd)
+			{
+			end = true;
+			end_pos = cur_pos;
+			}
+		++cur_pos;
+		}
+
+	if(start_pos == 0 && end_pos == 0)
+		throw 1;
+
+	return aStr.substr(start_pos + 1, end_pos - start_pos - 1);
+	}
+
 
 int main()
 	{
-	std::cout << "Choose an initial starting url: ";
+	std::cout << choose_url;
 
 	size_t count_urls = 0, count_searches = 0, nof_empty_searches = 0, desired_line = 1;
 	std::ofstream ofile;
 	std::string url;
 	std::cin >> url;
 	std::string url_ref = url;
-	const std::string path = "page.html";
 
-	std::cout << std::endl << "Starting url: " << url << std::endl << std::endl;
+	std::cout << std::endl << start_url_message << url << std::endl << std::endl;
 
 	while(1)
 		{
-		ofile.open("usedpages.txt", std::ios::app);
-
-		if(DownloadFile(url, path))
-			for(std::string hlink : ExtractHyperlinks(path))
+		if(DownloadFile(url, stored_url_contents))
+			for(std::string hlink : ExtractHyperlinks(stored_url_contents))
 				{
-				if(!hlink.compare(0, 4, "http") && (hlink.find(' ') == std::string::npos) && FindString(hlink, "usedpages.txt"))
+				if(!hlink.compare(0, 4, "http") /*&& (hlink.find(' ') == std::string::npos)*/ && FindString(hlink, stored_urls))
 					{
+					ofile.open(stored_urls, std::ios::app);
 
 #ifdef OPEN_PAGES_IN_BROWSER					
 					BSTR b_hlink = _com_util::ConvertStringToBSTR(hlink.c_str());
@@ -95,16 +137,19 @@ int main()
 					SysFreeString(b_hlink);
 #endif /* OPEN_PAGES_IN_BROWSER */
 
-					std::cout << hlink << '\n';
+					if((url.find(SubString(2, 3, '/', hlink)) == std::string::npos) && (hlink.find("accounts.google.com") == std::string::npos))
+						++count_urls;
+
+					std::cout << hlink << std::endl;
 					url = hlink;
 					ofile << hlink << std::endl;
-					++count_urls;
+					ofile.close();
 					break;
 					}
 				}
 		++count_searches;
 		//cout << "One search complete." << endl;
-		if((count_searches - count_urls) > 3)
+		if((count_searches - count_urls) > LIMIT_OF_EMPTY_SEARCHES_LOCAL)
 			{
 			if(count_urls == 0)
 				++nof_empty_searches;
@@ -112,44 +157,26 @@ int main()
 			count_urls = count_searches = 0;
 			}
 
-		if(nof_empty_searches > 3)
+		if(nof_empty_searches > LIMIT_OF_EMPTY_SEARCHES_GLOBAL)
 			{
-			std::cout << std::endl << "\aThree searches complete without changes.";
+			std::cout << std::endl << LIMIT_OF_EMPTY_SEARCHES_GLOBAL << empty_searches_message;
 
 			size_t current_line = 1;
 			std::ifstream ifl;
 			std::string newpage;
 
-			ifl.open("usedpages.txt");
+			ifl.open(stored_urls);
 			while((current_line <= desired_line) && (getline(ifl, newpage)))
-				{
-				++current_line;
-				}
+				{ ++current_line; }
 			ifl.close();
 
 			++desired_line;
 			if((current_line) != desired_line)
 				{
-				std::cout << std::endl << "Exhausted all possibilities for initial starting url, choose another starting url: ";
+				std::cout << std::endl << choose_new_url;
 
-				DWORD time_end = (DWORD)0;
-				bool key_hit = false;
-
-				for(;;)
-					{
-					Beep(5000, 1000);
-					time_end = GetTickCount() + 500;
-					while(time_end > GetTickCount())
-						{
-						if(_kbhit())
-							{
-							key_hit = true;
-							break;
-							}
-						}
-					if(key_hit)
-						break;
-					}
+				while(!_kbhit())
+					{ Beep(500, 500); }
 
 				desired_line = current_line;
 				std::cin >> newpage;
@@ -158,10 +185,8 @@ int main()
 			url_ref = url = newpage;
 			nof_empty_searches = count_urls = count_searches = 0;
 
-			std::cout << std::endl << "Using new url: " << url << std::endl << std::endl;
+			std::cout << std::endl << new_url_message << url << std::endl << std::endl;
 			}
-
-		ofile.close();
 		}
 
 	ofile.close();
