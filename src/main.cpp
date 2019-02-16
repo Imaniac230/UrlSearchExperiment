@@ -43,7 +43,7 @@ int main()
 				}
 
 		++count_searches;
-		if((count_searches - count_urls) > LIMIT_OF_EMPTY_SEARCHES_LOCAL)
+		if((count_searches - count_urls) >= LIMIT_OF_EMPTY_SEARCHES_LOCAL)
 			{
 			if(count_urls == 0)
 				++nof_empty_searches;
@@ -51,7 +51,7 @@ int main()
 			count_urls = count_searches = 0;
 			}
 
-		if(nof_empty_searches > LIMIT_OF_EMPTY_SEARCHES_GLOBAL)
+		if(nof_empty_searches >= LIMIT_OF_EMPTY_SEARCHES_GLOBAL)
 			{
 			std::cout << std::endl << LIMIT_OF_EMPTY_SEARCHES_GLOBAL << empty_searches_message;
 
