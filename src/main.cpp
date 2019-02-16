@@ -9,6 +9,10 @@ int main()
 	std::ofstream ofile;
 	std::string url;
 	std::cin >> url;
+
+	if(!url.compare("exit"))
+		return 1;
+
 	std::string url_ref = url;
 
 	std::cout << std::endl << start_url_message << url << std::endl << std::endl;
@@ -16,6 +20,7 @@ int main()
 	while(1)
 		{
 		if(DownloadFile(url, stored_url_contents))
+			{
 			for(std::string hlink : ExtractHyperlinks(stored_url_contents))
 				{
 				if(!hlink.compare(0, 4, "http") /*&& (hlink.find(' ') == std::string::npos)*/ && FindString(hlink, stored_urls))
@@ -41,8 +46,14 @@ int main()
 					break;
 					}
 				}
+			++count_searches;
+			}
+		else
+			{
+			std::cout << std::endl << bad_url;
+			nof_empty_searches = LIMIT_OF_EMPTY_SEARCHES_GLOBAL;
+			}
 
-		++count_searches;
 		if((count_searches - count_urls) >= LIMIT_OF_EMPTY_SEARCHES_LOCAL)
 			{
 			if(count_urls == 0)
@@ -74,6 +85,9 @@ int main()
 
 				desired_line = current_line;
 				std::cin >> newpage;
+
+				if(!newpage.compare("exit"))
+					return 1;
 				}
 
 			url_ref = url = newpage;
