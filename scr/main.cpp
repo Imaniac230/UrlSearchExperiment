@@ -37,7 +37,7 @@ std::string FileToString(const std::string aFileName)
 
 std::set<std::string> ExtractHyperlinks(const std::string aFileName)
 	{
-	static const std::regex hl_regex("<a href=\"(.*?)\">", std::regex_constants::icase);
+	static const std::regex hl_regex("<a href=\"(.*?)\"", std::regex_constants::icase);
 
 	const std::string text = FileToString(aFileName);
 
